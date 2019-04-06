@@ -3,7 +3,7 @@ package material
 import (
 	"time"
 
-	"dasa.cc/snd"
+	"github.com/dskinner/snd"
 	"golang.org/x/mobile/exp/f32"
 )
 

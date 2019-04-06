@@ -3,9 +3,9 @@ package material
 import (
 	"time"
 
-	"dasa.cc/material/glutil"
-	"dasa.cc/material/icon"
-	"dasa.cc/simplex"
+	"github.com/dskinner/material/glutil"
+	"github.com/dskinner/material/icon"
+	"github.com/dskinner/simplex"
 	"golang.org/x/mobile/event/touch"
 	"golang.org/x/mobile/exp/f32"
 	"golang.org/x/mobile/gl"
@@ -171,6 +171,7 @@ func (bar *Toolbar) AddAction(btn *Button) {
 	bar.actions = append(bar.actions, btn)
 }
 
+// TODO function breaks (index out of range) if there are no actions
 func (tb *Toolbar) Constraints(env *Environment) []simplex.Constraint {
 	stp := env.Grid.StepSize()
 	var (
@@ -204,7 +205,7 @@ func (tb *Toolbar) Constraints(env *Environment) []simplex.Constraint {
 		nav.Width(btnsize), nav.Height(btnsize), nav.Z(5),
 		nav.StartIn(tb.Box, env.Grid.Gutter),
 		nav.CenterVerticalIn(tb.Box),
-		title.StartIn(tb.Box, titleStart), title.Before(tb.actions[len(tb.actions)-1].Box, 0),
+		title.StartIn(tb.Box, titleStart), title.Before(tb.actions[len(tb.actions)-1].Box, 0), // breaks here
 		title.CenterVerticalIn(tb.Box), title.Height(btnsize), title.Z(5),
 	}
 
@@ -300,6 +301,7 @@ func (mu *Menu) Hide() {
 	}.Do()
 }
 
+// TODO function breaks (index out of range) if there are no actions
 func (mu *Menu) Constraints(env *Environment) []simplex.Constraint {
 	cns := []simplex.Constraint{
 		mu.Width(Dp(100).Px()), mu.Z(8),
@@ -314,7 +316,7 @@ func (mu *Menu) Constraints(env *Environment) []simplex.Constraint {
 			cns = append(cns, btn.Below(mu.actions[i-1].Box, Dp(20).Px()))
 		}
 	}
-	cns = append(cns, mu.AlignBottoms(mu.actions[len(mu.actions)-1].Box, Dp(20).Px()))
+	cns = append(cns, mu.AlignBottoms(mu.actions[len(mu.actions)-1].Box, Dp(20).Px())) // breaks here
 
 	return cns
 }

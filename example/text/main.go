@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"dasa.cc/material"
+	"github.com/dskinner/material"
 	"golang.org/x/mobile/app"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/paint"

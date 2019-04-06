@@ -18,11 +18,11 @@ import (
 	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
 
-	"dasa.cc/material/assets"
-	"dasa.cc/material/glutil"
-	"dasa.cc/material/icon"
-	"dasa.cc/material/text"
-	"dasa.cc/simplex"
+	"github.com/dskinner/material/assets"
+	"github.com/dskinner/material/glutil"
+	"github.com/dskinner/material/icon"
+	"github.com/dskinner/material/text"
+	"github.com/dskinner/simplex"
 
 	"golang.org/x/mobile/event/size"
 	"golang.org/x/mobile/event/touch"

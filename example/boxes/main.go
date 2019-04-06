@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"dasa.cc/material"
-	"dasa.cc/snd"
+	"github.com/dskinner/material"
+	"github.com/dskinner/snd"
 	"golang.org/x/mobile/app"
 	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/paint"

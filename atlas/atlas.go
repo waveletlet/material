@@ -9,8 +9,8 @@ import (
 	"os"
 	"sort"
 
-	"dasa.cc/material/glutil"
-	"dasa.cc/octree"
+	"github.com/dskinner/material/glutil"
+	"github.com/dskinner/octree"
 	"golang.org/x/mobile/gl"
 )
 

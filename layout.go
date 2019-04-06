@@ -1,7 +1,7 @@
 package material
 
 import (
-	"dasa.cc/simplex"
+	"github.com/dskinner/simplex"
 	"golang.org/x/mobile/exp/f32"
 )
 
