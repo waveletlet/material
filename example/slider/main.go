@@ -17,9 +17,9 @@ import (
 )
 
 var (
-	env        = new(material.Environment)
-	btn1, btn2 *material.Button
-	box1       *material.Material
+	env          = new(material.Environment)
+	slider, btn2 *material.Button
+	box1         *material.Material
 	//	boxes [9]*material.Material
 	sig   snd.Discrete
 	quits []chan struct{}
@@ -52,47 +52,56 @@ func onStart(ctx gl.Context) {
 	env.Load(ctx)
 	env.LoadGlyphs(ctx)
 
-	btn1 = env.NewButton(ctx)
-	btn1.SetColor(material.Purple500)
-	btn1.OnTouch = moveBoxDown
-	btn1.SetText("Up")
+	slider = env.NewButton(ctx)
+	slider.SetColor(material.Purple500)
+	slider.OnTouch = setSlider
 
 	btn2 = env.NewButton(ctx)
 	btn2.SetColor(material.Teal500)
-	btn2.OnTouch = moveBoxUp
-	btn2.SetText("Down")
+	btn2.OnTouch = resetSlider
+	btn2.SetText("Reset")
 
 	box1 = env.NewMaterial(ctx)
 	box1.SetColor(material.LightBlue500)
+	box1.Roundness = 5
 
 }
 
 // placeholder for function that will move the slider indicator up and down the
 // slider
-func moveBoxDown(ev touch.Event) {
+func setSlider(ev touch.Event) {
 	m := box1.World()
-	x, y := m[0][3], m[1][3]
 	quits = append(quits, material.Animation{
 		Sig:  sig,
 		Dur:  1000 * time.Millisecond,
 		Loop: false,
 		Interp: func(dt float32) {
-			m[0][3] = x + ev.X*0.2*dt
-			m[1][3] = y + y*0.6*dt
+			m[1][3] = ev.Y * (1 - dt)
+		},
+		End: func() {
+			m[1][3] = ev.Y
 		},
 	}.Do())
 }
 
-func moveBoxUp(ev touch.Event) {
+func resetSlider(ev touch.Event) {
 	m := box1.World()
-	x, y := m[0][3], m[1][3]
+	y := m[1][3]
+	m2 := slider.World()
+	h2 := m2[1][1]
+	y2 := m2[1][3]
 	quits = append(quits, material.Animation{
 		Sig:  sig,
 		Dur:  500 * time.Millisecond,
 		Loop: false,
+		Start: func() {
+			m[1][3] = y2
+		},
 		Interp: func(dt float32) {
-			m[0][3] = x - ev.X*0.2*dt
 			m[1][3] = y - y*0.6*dt
+		},
+		End: func() {
+			m[1][3] = y2 + h2
 		},
 	}.Do())
 }
@@ -106,7 +115,7 @@ func moveBoxUp(ev touch.Event) {
 //			},
 //		}.Do())
 //	func() {
-//		m := btn1.World()
+//		m := slider.World()
 //		x, y := m[0][3], m[1][3]
 //		w, h := m[0][0], m[1][1]
 //		quits = append(quits, material.Animation{
@@ -116,7 +125,7 @@ func moveBoxUp(ev touch.Event) {
 //			Interp: func(dt float32) {
 //				m[0][0] = w + 200*dt
 //				m[0][3] = x - 200*dt/2
-//				btn1.SetText(fmt.Sprintf("w: %.2f\nh: %.2f", m[0][0], m[1][1]))
+//				slider.SetText(fmt.Sprintf("w: %.2f\nh: %.2f", m[0][0], m[1][1]))
 //			},
 //		}.Do())
 //		quits = append(quits, material.Animation{
@@ -148,14 +157,14 @@ func onLayout(sz size.Event) {
 
 	b, p := env.Box, env.Grid.Gutter
 	env.AddConstraints(
-		btn1.Width(600), btn1.Height(200), btn1.Z(1), btn1.CenterHorizontalIn(b), btn1.StartIn(b, p), btn1.TopIn(b, p),
+		slider.Width(50), slider.Height(float32(sz.HeightPx)*0.6), slider.Z(1), slider.CenterVerticalIn(b), slider.EndIn(b, p),
+		box1.Width(60), box1.Height(100), box1.Z(2), box1.CenterVerticalIn(b), box1.EndIn(b, p),
 		btn2.Width(600), btn2.Height(200), btn2.Z(3), btn2.CenterHorizontalIn(b),
-		box1.Width(600), box1.Height(400), box1.Z(2), box1.CenterHorizontalIn(b), box1.CenterVerticalIn(b), box1.StartIn(b, p), box1.TopIn(b, p),
 	)
 
 	//is there a reason this was in onLayout and not onStart?
 	//doesn't seem to affect text size predictably either way
-	//btn1.SetTextHeight(material.Dp(24).Px())
+	//slider.SetTextHeight(material.Dp(24).Px())
 	log.Println("starting layout")
 	t := time.Now()
 	env.FinishLayout()
