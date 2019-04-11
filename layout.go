@@ -6,7 +6,7 @@ import (
 )
 
 type Box struct {
-	l, r, b, t, z simplex.Var
+	l, r, b, t, z simplex.Var // left, right, bottom, top, z
 	world         f32.Mat4
 }
 

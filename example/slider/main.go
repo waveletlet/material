@@ -19,7 +19,7 @@ import (
 var (
 	env          = new(material.Environment)
 	slider, btn2 *material.Button
-	box1         *material.Material
+	indicator    *material.Material
 	//	boxes [9]*material.Material
 	sig   snd.Discrete
 	quits []chan struct{}
@@ -58,86 +58,77 @@ func onStart(ctx gl.Context) {
 
 	btn2 = env.NewButton(ctx)
 	btn2.SetColor(material.Teal500)
-	btn2.OnTouch = resetSlider
+	btn2.OnTouch = sliderMin
 	btn2.SetText("Reset")
 
-	box1 = env.NewMaterial(ctx)
-	box1.SetColor(material.LightBlue500)
-	box1.Roundness = 5
+	indicator = env.NewMaterial(ctx)
+	indicator.SetColor(material.LightBlue500)
+	indicator.Roundness = 5
 
 }
 
 // placeholder for function that will move the slider indicator up and down the
 // slider
 func setSlider(ev touch.Event) {
-	m := box1.World()
-	quits = append(quits, material.Animation{
-		Sig:  sig,
-		Dur:  1000 * time.Millisecond,
-		Loop: false,
-		Interp: func(dt float32) {
-			m[1][3] = ev.Y * (1 - dt)
-		},
-		End: func() {
-			m[1][3] = ev.Y
-		},
-	}.Do())
+	if ev.Type == touch.TypeBegin {
+		m := indicator.World()
+		quits = append(quits, material.Animation{
+			Sig:  sig,
+			Dur:  1000 * time.Millisecond,
+			Loop: false,
+			Interp: func(dt float32) {
+				m[1][3] = ev.Y * (1 - dt)
+			},
+			End: func() {
+				m[1][3] = ev.Y
+				log.Printf("ev: %v, y: %v, h: %v\n", ev, m[1][3], m[1][1])
+			},
+		}.Do())
+	}
 }
 
-func resetSlider(ev touch.Event) {
-	m := box1.World()
-	y := m[1][3]
-	m2 := slider.World()
-	h2 := m2[1][1]
-	y2 := m2[1][3]
-	quits = append(quits, material.Animation{
-		Sig:  sig,
-		Dur:  500 * time.Millisecond,
-		Loop: false,
-		Start: func() {
-			m[1][3] = y2
-		},
-		Interp: func(dt float32) {
-			m[1][3] = y - y*0.6*dt
-		},
-		End: func() {
-			m[1][3] = y2 + h2
-		},
-	}.Do())
+func sliderMin(ev touch.Event) {
+	if ev.Type == touch.TypeBegin {
+		m := indicator.World()
+		y := m[1][3]
+		m2 := slider.World()
+		h2 := m2[1][1]
+		y2 := m2[1][3]
+		quits = append(quits, material.Animation{
+			Sig:  sig,
+			Dur:  500 * time.Millisecond,
+			Loop: false,
+			Start: func() {
+				m[1][3] = y2
+			},
+			Interp: func(dt float32) {
+				m[1][3] = y - y*0.6*dt
+			},
+			End: func() {
+				//m[1][3] = y2 + h2 // top of the slider
+				m[1][3] = y2
+				log.Printf("ev: %v, y: %v, h2: %v, y2: %v\n", ev, y, h2, y2)
+				//dumpWorld(indicator)
+			},
+		}.Do())
+	}
 }
 
-//		quits = append(quits, material.Animation{
-//			Sig:  sig,
-//			Dur:  3000 * time.Millisecond,
-//			Loop: false,
-//			Interp: func(dt float32) {
-//				m[2][3] = z + 4*dt
-//			},
-//		}.Do())
-//	func() {
+func dumpWorld(ob *material.Material) {
+	for i, sl := range ob.World() {
+		log.Printf("i: %v, sl: %v\n", i, sl)
+	}
+}
+
 //		m := slider.World()
-//		x, y := m[0][3], m[1][3]
-//		w, h := m[0][0], m[1][1]
-//		quits = append(quits, material.Animation{
-//			Sig:  sig,
-//			Dur:  4000 * time.Millisecond,
-//			Loop: true,
-//			Interp: func(dt float32) {
-//				m[0][0] = w + 200*dt
-//				m[0][3] = x - 200*dt/2
-//				slider.SetText(fmt.Sprintf("w: %.2f\nh: %.2f", m[0][0], m[1][1]))
-//			},
-//		}.Do())
-//		quits = append(quits, material.Animation{
-//			Sig:  sig,
-//			Dur:  2000 * time.Millisecond,
-//			Loop: true,
-//			Interp: func(dt float32) {
-//				m[1][1] = h + 200*dt
-//				m[1][3] = y - 200*dt/2
-//			},
-//		}.Do())
-//	}()
+//		w, x := m[0][0], m[0][3]
+//    h, y := m[1][1], m[1][3]
+//		z	   := m[2][3]
+//		example matrix
+//		[60.00,		0.0,		0.0,	1300.0]
+//		[	0.00,	100.0,		0.0,	2000.0]
+//		[	0.00,		0.0,		1.0,		2.00]
+//		[	0.00,		0.0,		0.0,		1.00]
 
 func onStop(ctx gl.Context) {
 	env.Unload(ctx)
@@ -158,7 +149,7 @@ func onLayout(sz size.Event) {
 	b, p := env.Box, env.Grid.Gutter
 	env.AddConstraints(
 		slider.Width(50), slider.Height(float32(sz.HeightPx)*0.6), slider.Z(1), slider.CenterVerticalIn(b), slider.EndIn(b, p),
-		box1.Width(60), box1.Height(100), box1.Z(2), box1.CenterVerticalIn(b), box1.EndIn(b, p),
+		indicator.Width(60), indicator.Height(100), indicator.Z(2), indicator.CenterVerticalIn(b), indicator.EndIn(b, p),
 		btn2.Width(600), btn2.Height(200), btn2.Z(3), btn2.CenterHorizontalIn(b),
 	)
 
@@ -212,6 +203,7 @@ func main() {
 				a.Publish()
 				a.Send(paint.Event{})
 			case touch.Event:
+				//log.Printf("Touch event: %v\n", ev)
 				env.Touch(ev)
 			}
 		}
