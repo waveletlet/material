@@ -662,6 +662,7 @@ func (env *Environment) DrawGridDebug(ctx gl.Context) {
 
 func (env *Environment) Touch(ev touch.Event) bool {
 	ex, ey := ev.X, float32(windowSize.HeightPx)-ev.Y
+	ev.Y = ey // convert Y coord to bottom = 0, top = max
 	for i := len(env.sheets) - 1; i >= 0; i-- {
 		sheet := env.sheets[i]
 		if !sheet.Hidden() && sheet.Contains(ex, ey) {

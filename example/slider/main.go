@@ -20,9 +20,8 @@ var (
 	env          = new(material.Environment)
 	slider, btn2 *material.Button
 	indicator    *material.Material
-	//	boxes [9]*material.Material
-	sig   snd.Discrete
-	quits []chan struct{}
+	sig          snd.Discrete
+	quits        []chan struct{}
 )
 
 func onStart(ctx gl.Context) {
@@ -53,22 +52,20 @@ func onStart(ctx gl.Context) {
 	env.LoadGlyphs(ctx)
 
 	slider = env.NewButton(ctx)
-	slider.SetColor(material.Purple500)
+	slider.SetColor(env.Palette().Dark)
 	slider.OnTouch = setSlider
 
 	btn2 = env.NewButton(ctx)
-	btn2.SetColor(material.Teal500)
+	btn2.SetColor(env.Palette().Primary)
 	btn2.OnTouch = sliderMin
 	btn2.SetText("Reset")
 
 	indicator = env.NewMaterial(ctx)
-	indicator.SetColor(material.LightBlue500)
+	indicator.SetColor(env.Palette().Accent)
 	indicator.Roundness = 5
 
 }
 
-// placeholder for function that will move the slider indicator up and down the
-// slider
 func setSlider(ev touch.Event) {
 	if ev.Type == touch.TypeBegin {
 		m := indicator.World()
@@ -77,7 +74,6 @@ func setSlider(ev touch.Event) {
 			Dur:  1000 * time.Millisecond,
 			Loop: false,
 			Interp: func(dt float32) {
-				//m[1][3] = ev.Y * (1 - dt)
 				m[1][3] -= (m[1][3] - ev.Y) * dt
 			},
 			End: func() {
@@ -100,15 +96,13 @@ func sliderMin(ev touch.Event) {
 			Dur:  500 * time.Millisecond,
 			Loop: false,
 			Interp: func(dt float32) {
-				m[1][3] = m[1][3] - (m[1][3]-y2)*dt
+				m[1][3] -= (m[1][3] - y2) * dt
 				// don't use 'y' in place of m[1][3] here so the value of m[1][3] is
 				// evaluated each step in the loop
 			},
 			End: func() {
-				//m[1][3] = y2 + h2 // top of the slider
 				m[1][3] = y2
 				log.Printf("ev: %v, y: %v, h2: %v, y2: %v\n", ev, y, h2, y2)
-				//dumpWorld(indicator)
 			},
 		}.Do())
 	}
@@ -117,12 +111,6 @@ func sliderMin(ev touch.Event) {
 func dumpWorld(ob *material.Material) {
 	for i, sl := range ob.World() {
 		log.Printf("i: %v, sl: %v\n", i, sl)
-	}
-}
-
-func dumpSig() {
-	for i, v := range sig {
-		log.Printf("%v: %v\n", i, v)
 	}
 }
 
