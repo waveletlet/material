@@ -76,9 +76,9 @@ func setSlider(ev touch.Event) {
 			Sig:  sig,
 			Dur:  1000 * time.Millisecond,
 			Loop: false,
-			Interp: func(dt float32) {
-				m[1][3] = ev.Y * (1 - dt)
-			},
+			//Interp: func(dt float32) {
+			//m[1][3] = ev.Y * (1 - dt)
+			//},
 			End: func() {
 				m[1][3] = ev.Y
 				log.Printf("ev: %v, y: %v, h: %v\n", ev, m[1][3], m[1][1])
@@ -99,10 +99,11 @@ func sliderMin(ev touch.Event) {
 			Dur:  500 * time.Millisecond,
 			Loop: false,
 			Start: func() {
-				m[1][3] = y2
+				m[1][3] = y
 			},
 			Interp: func(dt float32) {
-				m[1][3] = y - y*0.6*dt
+				m[1][3] -= (y - y2) / 16 * dt // distance to move  /  number of time steps (from anim.go) * location in time
+				log.Printf("m[1][3] %v -= (y - y2) / 16 * dt: %v; dt: %v\n", m[1][3], (y-y2)/16*dt, dt)
 			},
 			End: func() {
 				//m[1][3] = y2 + h2 // top of the slider
@@ -117,6 +118,12 @@ func sliderMin(ev touch.Event) {
 func dumpWorld(ob *material.Material) {
 	for i, sl := range ob.World() {
 		log.Printf("i: %v, sl: %v\n", i, sl)
+	}
+}
+
+func dumpSig() {
+	for i, v := range sig {
+		log.Printf("%v: %v\n", i, v)
 	}
 }
 
