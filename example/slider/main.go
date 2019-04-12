@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -17,11 +18,11 @@ import (
 )
 
 var (
-	env          = new(material.Environment)
-	slider, btn2 *material.Button
-	indicator    *material.Material
-	sig          snd.Discrete
-	quits        []chan struct{}
+	env                    = new(material.Environment)
+	slider, btnMin, btnMax *material.Button
+	indicator, readout     *material.Material
+	sig                    snd.Discrete
+	quits                  []chan struct{}
 )
 
 func onStart(ctx gl.Context) {
@@ -55,14 +56,23 @@ func onStart(ctx gl.Context) {
 	slider.SetColor(env.Palette().Dark)
 	slider.OnTouch = setSlider
 
-	btn2 = env.NewButton(ctx)
-	btn2.SetColor(env.Palette().Primary)
-	btn2.OnTouch = sliderMin
-	btn2.SetText("Reset")
+	btnMin = env.NewButton(ctx)
+	btnMin.SetColor(env.Palette().Primary)
+	btnMin.OnTouch = sliderMin
+	btnMin.SetText("Min")
+
+	btnMax = env.NewButton(ctx)
+	btnMax.SetColor(env.Palette().Primary)
+	btnMax.OnTouch = sliderMax
+	btnMax.SetText("Max")
 
 	indicator = env.NewMaterial(ctx)
 	indicator.SetColor(env.Palette().Accent)
 	indicator.Roundness = 5
+
+	readout = env.NewMaterial(ctx)
+	readout.SetColor(env.Palette().Light)
+	readout.Roundness = 5
 
 }
 
@@ -73,12 +83,14 @@ func setSlider(ev touch.Event) {
 			Sig:  sig,
 			Dur:  1000 * time.Millisecond,
 			Loop: false,
+			Start: func() {
+				readout.SetText(fmt.Sprintf("%v", ev.Y))
+			},
 			Interp: func(dt float32) {
 				m[1][3] -= (m[1][3] - ev.Y) * dt
 			},
 			End: func() {
 				m[1][3] = ev.Y
-				log.Printf("ev: %v, y: %v, h: %v\n", ev, m[1][3], m[1][1])
 			},
 		}.Do())
 	}
@@ -87,14 +99,15 @@ func setSlider(ev touch.Event) {
 func sliderMin(ev touch.Event) {
 	if ev.Type == touch.TypeBegin {
 		m := indicator.World()
-		y := m[1][3]
 		m2 := slider.World()
-		h2 := m2[1][1]
 		y2 := m2[1][3]
 		quits = append(quits, material.Animation{
 			Sig:  sig,
 			Dur:  500 * time.Millisecond,
 			Loop: false,
+			Start: func() {
+				readout.SetText(fmt.Sprintf("%v", y2))
+			},
 			Interp: func(dt float32) {
 				m[1][3] -= (m[1][3] - y2) * dt
 				// don't use 'y' in place of m[1][3] here so the value of m[1][3] is
@@ -102,7 +115,31 @@ func sliderMin(ev touch.Event) {
 			},
 			End: func() {
 				m[1][3] = y2
-				log.Printf("ev: %v, y: %v, h2: %v, y2: %v\n", ev, y, h2, y2)
+			},
+		}.Do())
+	}
+}
+
+func sliderMax(ev touch.Event) {
+	if ev.Type == touch.TypeBegin {
+		m := indicator.World()
+		h1 := m[1][1]
+		m2 := slider.World()
+		y := m2[1][3]
+		h := m2[1][1]
+		end := y + h - h1
+		quits = append(quits, material.Animation{
+			Sig:  sig,
+			Dur:  500 * time.Millisecond,
+			Loop: false,
+			Start: func() {
+				readout.SetText(fmt.Sprintf("%v", end))
+			},
+			Interp: func(dt float32) {
+				m[1][3] -= (m[1][3] - (end)) * dt
+			},
+			End: func() {
+				m[1][3] = end
 			},
 		}.Do())
 	}
@@ -142,9 +179,13 @@ func onLayout(sz size.Event) {
 
 	b, p := env.Box, env.Grid.Gutter
 	env.AddConstraints(
-		slider.Width(50), slider.Height(float32(sz.HeightPx)*0.6), slider.Z(1), slider.CenterVerticalIn(b), slider.EndIn(b, p),
-		indicator.Width(60), indicator.Height(100), indicator.Z(2), indicator.CenterVerticalIn(b), indicator.EndIn(b, p),
-		btn2.Width(600), btn2.Height(200), btn2.Z(3), btn2.CenterHorizontalIn(b),
+		// would be better to make element w and h variables that are related to
+		// each other to keep proportions uniform on different device sizes
+		slider.Width(80), slider.Height(float32(sz.HeightPx)*0.6), slider.Z(1), slider.CenterHorizontalIn(b), slider.CenterVerticalIn(b),
+		indicator.Width(60), indicator.Height(100), indicator.Z(2), indicator.CenterHorizontalIn(b), indicator.CenterVerticalIn(b),
+		readout.Width(600), readout.Height(200), readout.Z(2), readout.CenterHorizontalIn(b), readout.Above(btnMin.Box, p),
+		btnMax.Width(600), btnMax.Height(200), btnMax.Z(3), btnMax.CenterHorizontalIn(b), btnMax.TopIn(b, p),
+		btnMin.Width(600), btnMin.Height(200), btnMin.Z(3), btnMin.CenterHorizontalIn(b), btnMin.BottomIn(b, p),
 	)
 
 	//is there a reason this was in onLayout and not onStart?
@@ -154,6 +195,8 @@ func onLayout(sz size.Event) {
 	t := time.Now()
 	env.FinishLayout()
 	log.Printf("finished layout in %s\n", time.Now().Sub(t))
+
+	readout.SetText(fmt.Sprintf("%v", indicator.World()[1][3]))
 }
 
 var lastpaint time.Time
