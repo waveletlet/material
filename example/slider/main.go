@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	env                    = new(material.Environment)
-	slider, btnMin, btnMax *material.Button
-	indicator, readout     *material.Material
-	sig                    snd.Discrete
-	quits                  []chan struct{}
+	env                               = new(material.Environment)
+	slider, indicator, btnMin, btnMax *material.Button
+	readout                           *material.Material
+	sig                               snd.Discrete
+	quits                             []chan struct{}
 )
 
 func onStart(ctx gl.Context) {
@@ -66,8 +66,9 @@ func onStart(ctx gl.Context) {
 	btnMax.OnTouch = sliderMax
 	btnMax.SetText("Max")
 
-	indicator = env.NewMaterial(ctx)
+	indicator = env.NewButton(ctx)
 	indicator.SetColor(env.Palette().Accent)
+	indicator.OnTouch = setSlider
 	indicator.Roundness = 5
 
 	readout = env.NewMaterial(ctx)
@@ -77,23 +78,31 @@ func onStart(ctx gl.Context) {
 }
 
 func setSlider(ev touch.Event) {
-	if ev.Type == touch.TypeBegin {
-		m := indicator.World()
-		quits = append(quits, material.Animation{
-			Sig:  sig,
-			Dur:  1000 * time.Millisecond,
-			Loop: false,
-			Start: func() {
-				readout.SetText(fmt.Sprintf("%v", ev.Y))
-			},
-			Interp: func(dt float32) {
-				m[1][3] -= (m[1][3] - ev.Y) * dt
-			},
-			End: func() {
-				m[1][3] = ev.Y
-			},
-		}.Do())
+	mi := indicator.World()
+	ms := slider.World()
+	max := ms[1][1] - mi[1][1] + ms[1][3]
+	if ev.Y > max {
+		ev.Y = max
 	}
+	log.Printf("ev.Y: %v, max: %v\n", ev.Y, max)
+	quits = append(quits, material.Animation{
+		Sig:  sig,
+		Dur:  200 * time.Millisecond,
+		Loop: false,
+		Start: func() {
+			readout.SetText(heightNormalized(ev.Y))
+		},
+		Interp: func(dt float32) {
+			if ev.Y >= (ms[1][3] + 0.5*ms[1][1]) {
+				mi[1][3] += (ev.Y - mi[1][3]) * dt
+			} else {
+				mi[1][3] -= (mi[1][3] - ev.Y) * dt
+			}
+		},
+		End: func() {
+			mi[1][3] = ev.Y
+		},
+	}.Do())
 }
 
 func sliderMin(ev touch.Event) {
@@ -106,7 +115,7 @@ func sliderMin(ev touch.Event) {
 			Dur:  500 * time.Millisecond,
 			Loop: false,
 			Start: func() {
-				readout.SetText(fmt.Sprintf("%v", y2))
+				readout.SetText(heightNormalized(y2))
 			},
 			Interp: func(dt float32) {
 				m[1][3] -= (m[1][3] - y2) * dt
@@ -121,28 +130,36 @@ func sliderMin(ev touch.Event) {
 }
 
 func sliderMax(ev touch.Event) {
+	// this only goes to 99% in landscape mode on my phone...
 	if ev.Type == touch.TypeBegin {
-		m := indicator.World()
-		h1 := m[1][1]
-		m2 := slider.World()
-		y := m2[1][3]
-		h := m2[1][1]
-		end := y + h - h1
+		mi := indicator.World()
+		hi := mi[1][1]
+		ms := slider.World()
+		ys := ms[1][3]
+		hs := ms[1][1]
+		max := hs - hi + ys
+		log.Printf("ev.Y: %v, max: %v\n", ev.Y, max)
 		quits = append(quits, material.Animation{
 			Sig:  sig,
 			Dur:  500 * time.Millisecond,
 			Loop: false,
 			Start: func() {
-				readout.SetText(fmt.Sprintf("%v", end))
+				readout.SetText(heightNormalized(max))
 			},
 			Interp: func(dt float32) {
-				m[1][3] -= (m[1][3] - (end)) * dt
+				mi[1][3] -= (mi[1][3] - (max)) * dt
 			},
 			End: func() {
-				m[1][3] = end
+				mi[1][3] = max
 			},
 		}.Do())
 	}
+}
+
+func heightNormalized(f float32) string {
+	m := slider.World()
+	y, h, hi := m[1][3], m[1][1], indicator.World()[1][1]
+	return fmt.Sprintf("%v", int((f-y)/(h-hi)*100))
 }
 
 func dumpWorld(ob *material.Material) {
@@ -177,26 +194,26 @@ func onLayout(sz size.Event) {
 	}
 	quits = quits[:0]
 
-	b, p := env.Box, env.Grid.Gutter
+	b, g, s := env.Box, env.Grid.Gutter, env.Grid.StepSize()
+	// env.Grid.StepSize is based on # columns, there must be a better way to set
+	// heights adaptively. Setting the slider.Height to anything more than 0.6 *
+	// screen ht makes the "max" button get lost in landscape mode
 	env.AddConstraints(
-		// would be better to make element w and h variables that are related to
-		// each other to keep proportions uniform on different device sizes
-		slider.Width(80), slider.Height(float32(sz.HeightPx)*0.6), slider.Z(1), slider.CenterHorizontalIn(b), slider.CenterVerticalIn(b),
-		indicator.Width(60), indicator.Height(100), indicator.Z(2), indicator.CenterHorizontalIn(b), indicator.CenterVerticalIn(b),
-		readout.Width(600), readout.Height(200), readout.Z(2), readout.CenterHorizontalIn(b), readout.Above(btnMin.Box, p),
-		btnMax.Width(600), btnMax.Height(200), btnMax.Z(3), btnMax.CenterHorizontalIn(b), btnMax.TopIn(b, p),
-		btnMin.Width(600), btnMin.Height(200), btnMin.Z(3), btnMin.CenterHorizontalIn(b), btnMin.BottomIn(b, p),
+		slider.Width(s/4), slider.Height(float32(sz.HeightPx)*0.6),
+		slider.Z(1), slider.CenterHorizontalIn(b), slider.StartIn(b, g),
+		indicator.Width(s/4*0.9), indicator.Height(s/4*1.5), indicator.Z(2), indicator.CenterHorizontalIn(slider.Box), indicator.CenterVerticalIn(slider.Box),
+		readout.Width(1*s), readout.Height(s/2), readout.Z(4), readout.CenterHorizontalIn(b), readout.Above(btnMin.Box, g), readout.Below(slider.Box, g),
+		btnMax.Width(1*s), btnMax.Height(s/2), btnMax.Z(4), btnMax.CenterHorizontalIn(b), btnMax.Above(slider.Box, 4*g),
+		btnMin.Width(1*s), btnMin.Height(s/2), btnMin.Z(4), btnMin.CenterHorizontalIn(b),
 	)
 
-	//is there a reason this was in onLayout and not onStart?
-	//doesn't seem to affect text size predictably either way
-	//slider.SetTextHeight(material.Dp(24).Px())
 	log.Println("starting layout")
 	t := time.Now()
 	env.FinishLayout()
 	log.Printf("finished layout in %s\n", time.Now().Sub(t))
 
-	readout.SetText(fmt.Sprintf("%v", indicator.World()[1][3]))
+	readout.SetTextHeight(s / 2 * 0.85)
+	readout.SetText(heightNormalized(indicator.World()[1][3]))
 }
 
 var lastpaint time.Time
