@@ -52,10 +52,12 @@ func onStart(ctx gl.Context) {
 	b1 = env.NewButton(ctx)
 	b1.SetTextColor(material.White)
 	b1.SetText("Menu thing A")
+	b1.OnTouch = b1Action
 
 	b2 = env.NewButton(ctx)
 	b2.SetTextColor(material.White)
 	b2.SetText("Menu thing B")
+	b2.OnTouch = b2Action
 
 	mnu = env.NewMenu(ctx)
 	mnu.AddAction(b1)
@@ -77,6 +79,14 @@ func showMenu(ev touch.Event) {
 func hideMenu(ev touch.Event) {
 	log.Printf("Hiding menu! %v\n", ev)
 	mnu.Hide()
+}
+
+func b1Action(ev touch.Event) {
+	log.Printf("b1Action! Ev: %v\n", ev)
+}
+
+func b2Action(ev touch.Event) {
+	log.Printf("b2Action! Ev: %v\n", ev)
 }
 
 func onStop(ctx gl.Context) {

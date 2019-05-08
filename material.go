@@ -238,6 +238,13 @@ func (mu *Menu) AddAction(btn *Button) {
 	mu.actions = append(mu.actions, btn)
 }
 
+// currently the menu buttons don't act like a single object with the menu,
+// *.hidden doesn't do anything visually, only changes whether button is
+// clickable (see environment.go)
+// A better design would be adding the menu and its buttons to a surface that
+// moves as one and preserves the relative locations of all its components to a
+// given point on the surface
+
 func (mu *Menu) ShowAt(m *f32.Mat4) {
 	x := mu.Box.world[0][3]
 	y := mu.Box.world[1][3]
@@ -253,59 +260,69 @@ func (mu *Menu) ShowAt(m *f32.Mat4) {
 }
 
 func (mu *Menu) Show() {
-	go func() {
-		h := mu.Box.world[1][1]
-		y := mu.Box.world[1][3]
-		anim := Animation{
-			Sig: ExpSig,
-			Dur: 300 * time.Millisecond,
-			Start: func() {
-				mu.Box.world[1][1] = 0
-				mu.Box.world[1][3] = y + h
-				mu.hidden = false
-				for _, btn := range mu.actions {
-					btn.hidden = false
-				}
-			},
-			Interp: func(dt float32) {
-				mu.Box.world[1][1] = h * dt
-				mu.Box.world[1][3] = (y + h) - h*dt
-			},
-			End: func() {
-				mu.Box.world[1][1] = h
-				mu.Box.world[1][3] = y
-			},
-		}
-		anim.Do()
-	}()
+	if mu.hidden {
+		go func() {
+			mw := mu.Box.world
+			h := mu.Box.world[1][1]
+			y := mu.Box.world[1][3]
+			anim := Animation{
+				Sig: ExpSig,
+				Dur: 300 * time.Millisecond,
+				Start: func() {
+					mu.hidden = false
+					for _, btn := range mu.actions {
+						btn.hidden = false
+					}
+				},
+				Interp: func(dt float32) {
+					mu.Box.world[1][3] = (mw[1][3] + mw[1][1]) - mw[1][1]*dt
+				},
+				End: func() {
+					mu.Box.world[1][1] = h
+					mu.Box.world[1][3] = y - h
+					for _, btn := range mu.actions {
+						btn.Box.world[1][3] -= h
+					}
+				},
+			}
+			anim.Do()
+		}()
+	}
 }
 
 func (mu *Menu) Hide() {
-	h := mu.Box.world[1][1]
-	y := mu.Box.world[1][3]
-	Animation{
-		Sig: ExpSig,
-		Dur: 200 * time.Millisecond,
-		Interp: func(dt float32) {
-			mu.Box.world[1][1] = h * (1 - dt)
-			mu.Box.world[1][3] = (y + h) - h*(1-dt)
-		},
-		End: func() {
-			mu.hidden = true
-			for _, btn := range mu.actions {
-				btn.hidden = true
-			}
-			mu.Box.world[1][1] = h
-			mu.Box.world[1][3] = y
-		},
-	}.Do()
+	if !mu.hidden {
+		h := mu.Box.world[1][1]
+		y := mu.Box.world[1][3]
+		mw := mu.Box.world
+		Animation{
+			Sig: ExpSig,
+			Dur: 100 * time.Millisecond,
+			Start: func() {
+				mu.hidden = true
+				for _, btn := range mu.actions {
+					btn.hidden = true
+				}
+			},
+			Interp: func(dt float32) {
+				mu.Box.world[1][3] = (mw[1][3] + mw[1][1]) - mw[1][1]*(1-dt)
+			},
+			End: func() {
+				mu.Box.world[1][1] = h
+				mu.Box.world[1][3] = h + y
+				for _, btn := range mu.actions {
+					btn.Box.world[1][3] += h
+				}
+			},
+		}.Do()
+	}
 }
 
 // TODO function breaks (index out of range) if there are no actions
 func (mu *Menu) Constraints(env *Environment) []simplex.Constraint {
 	cns := []simplex.Constraint{
 		mu.Width(Dp(100).Px()), mu.Z(8),
-		mu.StartIn(env.Box, env.Grid.Margin), mu.TopIn(env.Box, env.Grid.Margin),
+		mu.StartIn(env.Box, env.Grid.Margin), mu.Above(env.Box, env.Grid.Margin),
 	}
 
 	for i, btn := range mu.actions {
